@@ -172,36 +172,50 @@ function deleteEntry(d) {
 function renderCalendar() {
   const calendar = document.getElementById('calendar');
   calendar.innerHTML = '';
-  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
-  const start = new Date(y, m, 1), end = new Date(y, m + 1, 0);
-  document.getElementById('calendarMonthYear').textContent = `${now.toLocaleString('default', { month: 'long' })} ${y}`;
 
-  let day = new Date(start);
-  day.setDate(day.getDate() - day.getDay());
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const firstDayOfMonth = new Date(year, month, 1);
+  const lastDayOfMonth = new Date(year, month + 1, 0);
 
-  while (day <= end || day.getDay() !== 0) {
-    const ds = day.toISOString().split('T')[0];
-    const box = document.createElement('div');
-    box.className = 'calendar-day';
-    if (ds === todayStr) box.style.border = '2px solid #007bff';
-    box.tabIndex = 0;
-    box.innerHTML = `<div class="date-label">${day.getDate()}</div>`;
+  const startDate = new Date(firstDayOfMonth);
+  startDate.setDate(startDate.getDate() - startDate.getDay());
 
-    if (activityData[ds]) {
-      const a = activityData[ds];
-      box.innerHTML += `
-        <div class="emoji-indicators">
-          ${['pushups', 'pullups', 'squats'].map(k =>
-            a[k] >= goals[k] ? '✅' : (a[k] > 0 ? '⚠️' : '❌')
-          ).map(e => `<span>${e}</span>`).join('')}
-        </div>
-        ${a.deadHang ? `<div>⏱ ${a.deadHang}</div>` : ''}
-      `;
+  const endDate = new Date(lastDayOfMonth);
+  endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+
+  document.getElementById('calendarMonthYear').textContent =
+    `${now.toLocaleString('default', { month: 'long' })} ${year}`;
+
+  let current = new Date(startDate);
+
+  while (current <= endDate) {
+    const dateStr = current.toISOString().split('T')[0];
+    const dayBox = document.createElement('div');
+    dayBox.className = 'calendar-day';
+    dayBox.tabIndex = 0;
+
+    if (dateStr === todayStr) {
+      dayBox.style.border = '2px solid #007bff';
     }
 
-    box.addEventListener('click', () => openEditModal(ds));
-    calendar.appendChild(box);
-    day.setDate(day.getDate() + 1);
+    dayBox.innerHTML = `<div class="date-label">${current.getDate()}</div>`;
+
+    if (activityData[dateStr]) {
+      const data = activityData[dateStr];
+      const indicators = ['pushups', 'pullups', 'squats'].map(k =>
+        data[k] >= goals[k] ? '✅' : (data[k] > 0 ? '⚠️' : '❌')
+      ).map(e => `<span>${e}</span>`).join('');
+      dayBox.innerHTML += `<div class="emoji-indicators">${indicators}</div>`;
+      if (data.deadHang) {
+        dayBox.innerHTML += `<div>⏱ ${data.deadHang}</div>`;
+      }
+    }
+
+    dayBox.addEventListener('click', () => openEditModal(dateStr));
+    calendar.appendChild(dayBox);
+    current.setDate(current.getDate() + 1);
   }
 }
 
@@ -285,12 +299,10 @@ function renderHistoryTable(sortKey = 'date', ascending = true) {
   });
 }
 
-// Utilities
 function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// Events
 document.getElementById('workout-form').addEventListener('submit', saveTodayEntry);
 document.getElementById('edit-form').addEventListener('submit', saveEditEntry);
 document.querySelectorAll('.goals-section input').forEach(input => {
